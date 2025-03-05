@@ -54,7 +54,8 @@ const Index = () => {
     const newClip: Clip = {
       id: crypto.randomUUID(),
       startTime,
-      endTime
+      endTime,
+      title: '' // Initialize with empty title
     };
     
     setClips(prevClips => [...prevClips, newClip]);
