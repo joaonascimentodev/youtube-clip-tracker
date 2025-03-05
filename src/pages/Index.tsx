@@ -1,5 +1,5 @@
-
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import ClipsList, { Clip } from '@/components/ClipsList';
 import { YoutubeIcon } from 'lucide-react';
 
 const Index = () => {
+  const navigate = useNavigate();
   const [url, setUrl] = useState<string>('');
   const [videoId, setVideoId] = useState<string | null>(null);
   const [player, setPlayer] = useState<any>(null);
@@ -75,17 +76,8 @@ const Index = () => {
       return;
     }
 
-    toast.success('Clips ready to submit to web service', {
-      description: 'This would normally send data to your backend',
-      action: {
-        label: 'View Data',
-        onClick: () => {
-          console.log({
-            videoId,
-            clips: clips.map(({id, ...clipData}) => clipData)
-          });
-        }
-      }
+    toast.success('Clips successfully submitted', {
+      description: 'Navigating to download page...'
     });
 
     // In a real application, you would submit to your backend here
@@ -101,7 +93,13 @@ const Index = () => {
       });
       
       if (response.ok) {
-        toast.success('Clips submitted successfully');
+        // Navigate to the submitted clips page
+        navigate('/submitted-clips', { 
+          state: {
+            videoId,
+            clips: clips.map(({id, ...clipData}) => clipData)
+          }
+        });
       } else {
         toast.error('Failed to submit clips');
       }
@@ -110,6 +108,14 @@ const Index = () => {
       console.error(error);
     }
     */
+    
+    // For demonstration purposes, we'll navigate directly
+    navigate('/submitted-clips', { 
+      state: {
+        videoId,
+        clips: clips.map(({id, ...clipData}) => clipData)
+      }
+    });
   };
 
   // Handle pressing Enter in the URL input
