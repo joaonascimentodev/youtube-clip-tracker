@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -18,6 +17,12 @@ interface SubmittedClipsState {
   clips: Clip[];
 }
 
+declare global {
+  interface Window {
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
+
 const SubmittedClips = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -25,7 +30,6 @@ const SubmittedClips = () => {
   const clipPlayersRef = useRef<{[key: string]: any}>({});
 
   useEffect(() => {
-    // Load YouTube API if there are clips to show
     if (state?.clips?.length > 0) {
       loadYouTubeApi();
     }
@@ -53,7 +57,7 @@ const SubmittedClips = () => {
       const container = document.getElementById(playerId);
       
       if (container) {
-        const player = new window.YT.Player(playerId, {
+        const player = new (window as any).YT.Player(playerId, {
           videoId: state.videoId,
           height: '100%',
           width: '100%',
@@ -75,13 +79,10 @@ const SubmittedClips = () => {
   };
 
   const handleDownload = (clip: Clip) => {
-    // In a real application, this would trigger a download of the clip
-    // For now, we'll just show a toast message
     toast.success(`Preparing download for "${clip.title || 'Untitled clip'}"`, {
       description: `Time range: ${formatTime(clip.startTime)} - ${formatTime(clip.endTime)}`,
     });
     
-    // Demonstration - in a real app this would connect to a backend service
     console.log(`Download requested for clip:`, {
       videoId: state.videoId,
       startTime: clip.startTime,
@@ -167,33 +168,5 @@ const SubmittedClips = () => {
     </div>
   );
 };
-
-// Add this global TypeScript declaration
-declare global {
-  interface Window {
-    YT: {
-      Player: new (
-        elementId: string,
-        options: {
-          videoId: string;
-          height?: string | number;
-          width?: string | number;
-          playerVars?: {
-            autoplay?: number;
-            start?: number;
-            end?: number;
-            modestbranding?: number;
-            controls?: number;
-            rel?: number;
-            fs?: number;
-            enablejsapi?: number;
-          };
-          events?: Record<string, (event: any) => void>;
-        }
-      ) => any;
-    };
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
 
 export default SubmittedClips;
