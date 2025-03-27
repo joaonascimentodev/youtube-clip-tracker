@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatTime } from '@/utils/youtubeUtils';
-import { Download, ArrowLeft, Clock, Video, Type } from 'lucide-react';
+import { Download, ArrowLeft, Clock, Video, Type, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Clip {
@@ -28,6 +29,7 @@ const SubmittedClips = () => {
   const navigate = useNavigate();
   const state = location.state as SubmittedClipsState;
   const clipPlayersRef = useRef<{[key: string]: any}>({});
+  const [downloadingClips, setDownloadingClips] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     if (state?.clips?.length > 0) {
@@ -78,17 +80,60 @@ const SubmittedClips = () => {
     });
   };
 
-  const handleDownload = (clip: Clip) => {
-    toast.success(`Preparing download for "${clip.title || 'Untitled clip'}"`, {
-      description: `Time range: ${formatTime(clip.startTime)} - ${formatTime(clip.endTime)}`,
-    });
+  const handleDownload = async (clip: Clip, index: number) => {
+    const clipId = `clip-${index}`;
+    setDownloadingClips(prev => ({ ...prev, [clipId]: true }));
     
-    console.log(`Download requested for clip:`, {
-      videoId: state.videoId,
-      startTime: clip.startTime,
-      endTime: clip.endTime,
-      title: clip.title
-    });
+    try {
+      toast.success(`Preparing download for "${clip.title || 'Untitled clip'}"`, {
+        description: `Time range: ${formatTime(clip.startTime)} - ${formatTime(clip.endTime)}`,
+      });
+      
+      // Simulate a process of fetching and processing the clip
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Create a download link for demonstration
+      // In a real implementation, this would be a call to a backend service
+      // that would handle the actual video processing and return a download URL
+      const filename = `${clip.title || 'clip'}-${formatTime(clip.startTime).replace(':', '-')}-${formatTime(clip.endTime).replace(':', '-')}.mp4`;
+      
+      // For demonstration purposes, we'll create a text file with clip information
+      // In a real implementation, this would be the actual video file
+      const clipInfo = JSON.stringify({
+        videoId: state.videoId,
+        startTime: clip.startTime,
+        endTime: clip.endTime,
+        title: clip.title,
+        downloadedAt: new Date().toISOString()
+      }, null, 2);
+      
+      const blob = new Blob([clipInfo], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      // Create and click a download link
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename.replace('.mp4', '.json');
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      toast.success(`Download ready!`, {
+        description: `Your clip "${clip.title || 'Untitled clip'}" is ready.`,
+      });
+    } catch (error) {
+      console.error("Error processing clip:", error);
+      toast.error(`Download failed`, {
+        description: `There was an error processing your clip. Please try again.`,
+      });
+    } finally {
+      setDownloadingClips(prev => ({ ...prev, [clipId]: false }));
+    }
   };
 
   if (!state || !state.videoId || !state.clips || state.clips.length === 0) {
@@ -155,10 +200,20 @@ const SubmittedClips = () => {
               <CardFooter className="bg-muted/20 pt-3 pb-3">
                 <Button 
                   className="gap-2 w-full sm:w-auto"
-                  onClick={() => handleDownload(clip)}
+                  onClick={() => handleDownload(clip, index)}
+                  disabled={downloadingClips[`clip-${index}`]}
                 >
-                  <Download className="h-4 w-4" />
-                  Download Clip
+                  {downloadingClips[`clip-${index}`] ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Download Clip
+                    </>
+                  )}
                 </Button>
               </CardFooter>
             </Card>
