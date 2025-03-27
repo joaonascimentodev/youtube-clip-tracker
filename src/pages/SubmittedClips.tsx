@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,19 +22,57 @@ const SubmittedClips = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as SubmittedClipsState;
+  const clipPlayersRef = useRef<{[key: string]: any}>({});
 
-  if (!state || !state.videoId || !state.clips || state.clips.length === 0) {
-    return (
-      <div className="min-h-screen flex flex-col items-center px-4 py-10 md:py-16 max-w-5xl mx-auto">
-        <Card className="w-full max-w-4xl">
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground mb-4">No clips data found.</p>
-            <Button onClick={() => navigate('/')}>Return to Clip Tracker</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  useEffect(() => {
+    // Load YouTube API if there are clips to show
+    if (state?.clips?.length > 0) {
+      loadYouTubeApi();
+    }
+  }, [state?.clips]);
+
+  const loadYouTubeApi = () => {
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+      window.onYouTubeIframeAPIReady = createClipPlayers;
+    } else {
+      createClipPlayers();
+    }
+  };
+
+  const createClipPlayers = () => {
+    if (!state?.clips?.length) return;
+
+    state.clips.forEach((clip, index) => {
+      const playerId = `clip-player-${index}`;
+      const container = document.getElementById(playerId);
+      
+      if (container) {
+        const player = new window.YT.Player(playerId, {
+          videoId: state.videoId,
+          height: '100%',
+          width: '100%',
+          playerVars: {
+            autoplay: 0,
+            start: Math.floor(clip.startTime),
+            end: Math.ceil(clip.endTime),
+            modestbranding: 1,
+            controls: 1,
+            rel: 0,
+            fs: 1,
+            enablejsapi: 1,
+          },
+        });
+
+        clipPlayersRef.current[playerId] = player;
+      }
+    });
+  };
 
   const handleDownload = (clip: Clip) => {
     // In a real application, this would trigger a download of the clip
@@ -51,6 +89,19 @@ const SubmittedClips = () => {
       title: clip.title
     });
   };
+
+  if (!state || !state.videoId || !state.clips || state.clips.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col items-center px-4 py-10 md:py-16 max-w-5xl mx-auto">
+        <Card className="w-full max-w-4xl">
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground mb-4">No clips data found.</p>
+            <Button onClick={() => navigate('/')}>Return to Clip Tracker</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center px-4 py-10 md:py-16 max-w-5xl mx-auto">
@@ -93,10 +144,9 @@ const SubmittedClips = () => {
               </CardHeader>
               
               <CardContent className="pb-4">
-                <div className="aspect-video bg-muted/50 rounded-md flex items-center justify-center">
-                  <div className="flex flex-col items-center justify-center text-muted-foreground">
-                    <Video className="h-10 w-10 mb-2 opacity-50" />
-                    <p className="text-sm">Video preview would appear here</p>
+                <div className="aspect-video bg-muted/50 rounded-md overflow-hidden">
+                  <div id={`clip-player-${index}`} className="w-full h-full">
+                    {/* YouTube player will be loaded here */}
                   </div>
                 </div>
               </CardContent>
@@ -117,5 +167,33 @@ const SubmittedClips = () => {
     </div>
   );
 };
+
+// Add this global TypeScript declaration
+declare global {
+  interface Window {
+    YT: {
+      Player: new (
+        elementId: string,
+        options: {
+          videoId: string;
+          height?: string | number;
+          width?: string | number;
+          playerVars?: {
+            autoplay?: number;
+            start?: number;
+            end?: number;
+            modestbranding?: number;
+            controls?: number;
+            rel?: number;
+            fs?: number;
+            enablejsapi?: number;
+          };
+          events?: Record<string, (event: any) => void>;
+        }
+      ) => any;
+    };
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
 
 export default SubmittedClips;
